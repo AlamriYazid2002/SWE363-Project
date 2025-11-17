@@ -5,7 +5,7 @@ const NavigationContext = createContext(undefined);
 export function NavigationProvider({ children }) {
   const [currentPage, setCurrentPage] = useState("login");
   const [userRole, setUserRole] = useState(null);
-  const [popup, setPopup] = useState({ type: null, title: null, message: null });
+  const [popup, setPopup] = useState({ type: null, title: null, message: null, actionLabel: null });
   const [activeEvent, setActiveEvent] = useState(null);
   const [eventOverrides, setEventOverrides] = useState({});
 
@@ -38,16 +38,16 @@ export function NavigationProvider({ children }) {
     }));
   };
 
-  const showSuccessPopup = (title, message) => {
-    setPopup({ type: "success", title, message });
+  const showSuccessPopup = (title, message, actionLabel = null) => {
+    setPopup({ type: "success", title, message, actionLabel });
   };
 
-  const showErrorPopup = (title, message) => {
-    setPopup({ type: "error", title, message });
+  const showErrorPopup = (title, message, actionLabel = null) => {
+    setPopup({ type: "error", title, message, actionLabel });
   };
 
   const closePopup = () => {
-    setPopup({ type: null, title: null, message: null });
+    setPopup({ type: null, title: null, message: null, actionLabel: null });
   };
 
   return (
