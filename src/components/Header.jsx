@@ -22,7 +22,6 @@ export function Header({ userRole }) {
     } else if (userRole === "organizer") {
       return [
         { label: "Dashboard",   icon: LayoutDashboard, page: "organizer-dashboard" },
-        { label: "Create Event",icon: FileText,       page: "organizer-create" },
       ];
     } else if (userRole === "student") {
       return [

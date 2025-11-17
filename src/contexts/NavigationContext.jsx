@@ -6,6 +6,8 @@ export function NavigationProvider({ children }) {
   const [currentPage, setCurrentPage] = useState("login");
   const [userRole, setUserRole] = useState(null);
   const [popup, setPopup] = useState({ type: null, title: null, message: null });
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [eventOverrides, setEventOverrides] = useState({});
 
   const navigateTo = (page) => {
     setCurrentPage(page);
@@ -24,7 +26,16 @@ export function NavigationProvider({ children }) {
 
   const logout = () => {
     setUserRole(null);
+    setActiveEvent(null);
+    setEventOverrides({});
     setCurrentPage("login");
+  };
+
+  const setEventOverride = (title, data) => {
+    setEventOverrides((prev) => ({
+      ...prev,
+      [title]: data,
+    }));
   };
 
   const showSuccessPopup = (title, message) => {
@@ -45,9 +56,13 @@ export function NavigationProvider({ children }) {
         currentPage,
         userRole,
         popup,
+        activeEvent,
+        eventOverrides,
         navigateTo,
         login,
         logout,
+        setActiveEvent,
+        setEventOverride,
         showSuccessPopup,
         showErrorPopup,
         closePopup,

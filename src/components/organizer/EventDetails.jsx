@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { useNavigation } from "../../contexts/NavigationContext";
 
 const registrations = [
   { id: "S12345", name: "Ahmed Ali", email: "s12345@kfupm.edu.sa", registeredDate: "May 02, 2025", checkedIn: true },
@@ -41,6 +42,26 @@ const files = [
 ];
 
 export function EventDetails() {
+  const { activeEvent, navigateTo, setActiveEvent, eventOverrides } = useNavigation();
+  const fallbackEvent = {
+    title: "AI & Machine Learning Workshop",
+    status: "Approved",
+    category: "Technology",
+    date: "May 15, 2025",
+    time: "2:00 PM - 5:00 PM",
+    venue: "Building 5, Room 301",
+    registrations: 45,
+    capacity: 100,
+  };
+  const overridden = activeEvent && eventOverrides[activeEvent.title]
+    ? { ...activeEvent, ...eventOverrides[activeEvent.title] }
+    : activeEvent;
+  const event = overridden || fallbackEvent;
+  const registrationFill =
+    event.capacity && event.capacity > 0
+      ? Math.min(100, Math.round((event.registrations / event.capacity) * 100))
+      : 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header userRole="organizer" />
@@ -50,13 +71,21 @@ export function EventDetails() {
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h2 className="text-3xl mb-2">AI & Machine Learning Workshop</h2>
+              <h2 className="text-3xl mb-2">{event.title}</h2>
               <div className="flex items-center gap-3">
-                <Badge className="bg-green-100 text-green-800 border-green-200">Approved</Badge>
-                <Badge variant="outline">Technology</Badge>
+                <Badge className="bg-green-100 text-green-800 border-green-200">{event.status}</Badge>
+                <Badge variant="outline">{event.category || "Category"}</Badge>
               </div>
             </div>
-            <Button variant="outline">Edit Event</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActiveEvent(event);
+                navigateTo("organizer-create");
+              }}
+            >
+              Edit Event
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
@@ -64,24 +93,26 @@ export function EventDetails() {
               <Calendar className="text-kfupm-green mt-1" size={20} />
               <div>
                 <p className="text-sm text-gray-500">Date & Time</p>
-                <p>May 15, 2025</p>
-                <p className="text-sm">2:00 PM - 5:00 PM</p>
+                <p>{event.date}</p>
+                <p className="text-sm">{event.time || "Time TBD"}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <MapPin className="text-kfupm-green mt-1" size={20} />
               <div>
                 <p className="text-sm text-gray-500">Venue</p>
-                <p>Building 5, Room 301</p>
+                <p>{event.venue || "Venue TBD"}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Users className="text-kfupm-green mt-1" size={20} />
               <div>
                 <p className="text-sm text-gray-500">Capacity</p>
-                <p>45 / 100 registered</p>
+                <p>
+                  {event.registrations}/{event.capacity} registered
+                </p>
                 <div className="mt-2 bg-gray-200 rounded-full h-2 w-full">
-                  <div className="bg-kfupm-green h-2 rounded-full" style={{ width: "45%" }} />
+                  <div className="bg-kfupm-green h-2 rounded-full" style={{ width: `${registrationFill}%` }} />
                 </div>
               </div>
             </div>
