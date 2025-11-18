@@ -8,6 +8,7 @@ export function NavigationProvider({ children }) {
   const [popup, setPopup] = useState({ type: null, title: null, message: null });
   const [activeEvent, setActiveEvent] = useState(null);
   const [eventOverrides, setEventOverrides] = useState({});
+  const [createdEvents, setCreatedEvents] = useState([]);
 
   const navigateTo = (page) => {
     setCurrentPage(page);
@@ -28,6 +29,7 @@ export function NavigationProvider({ children }) {
     setUserRole(null);
     setActiveEvent(null);
     setEventOverrides({});
+    setCreatedEvents([]);
     setCurrentPage("login");
   };
 
@@ -36,6 +38,20 @@ export function NavigationProvider({ children }) {
       ...prev,
       [title]: data,
     }));
+  };
+
+  const addCreatedEvent = (event) => {
+    setCreatedEvents((prev) => [...prev, event]);
+  };
+
+  const updateCreatedEvent = (id, updates) => {
+    setCreatedEvents((prev) =>
+      prev.map((evt) => (evt.id === id ? { ...evt, ...updates } : evt))
+    );
+  };
+
+  const removeCreatedEvent = (id) => {
+    setCreatedEvents((prev) => prev.filter((evt) => evt.id !== id));
   };
 
   const showSuccessPopup = (title, message) => {
@@ -58,11 +74,15 @@ export function NavigationProvider({ children }) {
         popup,
         activeEvent,
         eventOverrides,
+        createdEvents,
         navigateTo,
         login,
         logout,
         setActiveEvent,
         setEventOverride,
+        addCreatedEvent,
+        updateCreatedEvent,
+        removeCreatedEvent,
         showSuccessPopup,
         showErrorPopup,
         closePopup,

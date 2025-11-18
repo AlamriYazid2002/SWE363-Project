@@ -42,13 +42,12 @@ export function Header({ userRole }) {
           else if (userRole === "student") navigateTo("student-dashboard");
         }}
       >
-        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-          <svg width="32" height="32" viewBox="0 0 50 50" fill="none" aria-hidden="true">
-            <circle cx="25" cy="25" r="23" stroke="#0D7B3F" strokeWidth="2" />
-            <text x="25" y="32" textAnchor="middle" fill="#0D7B3F" fontSize="20" fontWeight="bold">
-              K
-            </text>
-          </svg>
+        <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center">
+          <img
+            src="/dist/assets/KFUPM.png"
+            alt="KFUPM logo"
+            className="w-14 h-14 object-contain"
+          />
         </div>
         <h1 className="text-2xl">KFUPM Event Hub</h1>
       </div>

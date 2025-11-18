@@ -8,7 +8,16 @@ import { Label } from "../ui/label";
 import { useNavigation } from "../../contexts/NavigationContext";
 
 export function CreateEvent() {
-  const { showSuccessPopup, navigateTo, activeEvent, setActiveEvent, setEventOverride } = useNavigation();
+  const {
+    showSuccessPopup,
+    showErrorPopup,
+    navigateTo,
+    activeEvent,
+    setActiveEvent,
+    setEventOverride,
+    addCreatedEvent,
+    updateCreatedEvent,
+  } = useNavigation();
   const [formData, setFormData] = useState({
     title: "",
     category: "",
@@ -24,6 +33,7 @@ export function CreateEvent() {
   const materialsInputRef = useRef(null);
   const draftKey = "organizerEventDraft";
   const isEditing = Boolean(activeEvent);
+  const isEditingCustom = isEditing && activeEvent?.isCustom;
 
   useEffect(() => {
     // If editing an existing event, pre-fill from the selected event
@@ -67,18 +77,118 @@ export function CreateEvent() {
   const handleSubmit = (e) => {
     e.preventDefault();
     localStorage.removeItem(draftKey);
-    if (isEditing) {
-      const updatedEvent = {
-        ...activeEvent,
-        ...formData,
-        capacity: formData.capacity ? parseInt(formData.capacity, 10) : 0,
-        registrations: activeEvent?.registrations || 0,
-        status: "Pending", // require re-approval after edits
+
+    const formatDisplayDate = (value) => {
+      if (!value) return "Date TBD";
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return value;
+      return parsed.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+    };
+
+    const formatTimeRange = (start, end) => {
+      const formatTime = (val) => {
+        if (!val) return null;
+        const parsed = new Date(val);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       };
-      setEventOverride(updatedEvent.title, updatedEvent);
+      const startT = formatTime(start);
+      const endT = formatTime(end);
+      if (startT && endT) return `${startT} - ${endT}`;
+      if (startT) return startT;
+      return "Time TBD";
+    };
+
+    const requiredFields = [
+      { key: "title", label: "Event title" },
+      { key: "category", label: "Category" },
+      { key: "capacity", label: "Capacity" },
+      { key: "startDate", label: "Start date" },
+      { key: "venue", label: "Venue" },
+      { key: "description", label: "Description" },
+    ];
+
+    const missing = requiredFields.filter((f) => !formData[f.key]?.toString().trim());
+    const capacityNumber = formData.capacity ? parseInt(formData.capacity, 10) : NaN;
+
+    if (missing.length > 0) {
+      showErrorPopup(
+        "Missing required fields",
+        `Please fill: ${missing.map((f) => f.label).join(", ")}.`
+      );
+      return;
+    }
+
+    if (Number.isNaN(capacityNumber) || capacityNumber <= 0) {
+      showErrorPopup("Invalid capacity", "Capacity must be a number greater than 0.");
+      return;
+    }
+
+    if (formData.startDate && formData.endDate) {
+      const startMs = Date.parse(formData.startDate);
+      const endMs = Date.parse(formData.endDate);
+      if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+        showErrorPopup("Invalid dates", "Please provide valid start and end dates.");
+        return;
+      }
+      if (endMs <= startMs) {
+        showErrorPopup("End date must follow start date", "End date/time must be after start date/time.");
+        return;
+      }
+    }
+
+    const commonFields = {
+      ...formData,
+      capacity: capacityNumber,
+      venue: formData.venue || "Venue TBD",
+      description: formData.description || "",
+      date: formatDisplayDate(formData.startDate),
+      time: formatTimeRange(formData.startDate, formData.endDate),
+    };
+
+    if (isEditing) {
+      if (isEditingCustom) {
+        const updatedEvent = {
+          ...activeEvent,
+          ...commonFields,
+          registrations: activeEvent?.registrations || 0,
+          status: activeEvent?.status || "Pending",
+          startDate: formData.startDate || activeEvent.startDate || "",
+          endDate: formData.endDate || activeEvent.endDate || "",
+          date: commonFields.date || activeEvent.date || "Date TBD",
+          time: commonFields.time || activeEvent.time || "Time TBD",
+          isCustom: true,
+        };
+        updateCreatedEvent(activeEvent.id, updatedEvent);
+        showSuccessPopup("Event updated", "Your event changes were saved.");
+      } else {
+        const updatedEvent = {
+          ...activeEvent,
+          ...commonFields,
+          registrations: activeEvent?.registrations || 0,
+          status: "Pending", // require re-approval after edits
+        };
+        setEventOverride(updatedEvent.title, updatedEvent);
+        showSuccessPopup("Event updated", "Changes saved and sent for re-approval (status set to Pending).");
+      }
       setActiveEvent(null);
-      showSuccessPopup("Event updated", "Changes saved and sent for re-approval (status set to Pending).");
     } else {
+      const newEvent = {
+        id: `custom-${Date.now()}`,
+        title: formData.title || "Untitled Event",
+        category: formData.category || "General",
+        status: "Pending",
+        startDate: formData.startDate || "",
+        endDate: formData.endDate || "",
+        date: commonFields.date,
+        time: commonFields.time,
+        venue: commonFields.venue,
+        description: commonFields.description,
+        registrations: 0,
+        capacity: commonFields.capacity,
+        isCustom: true,
+      };
+      addCreatedEvent(newEvent);
       showSuccessPopup(
         "Event submitted for approval",
         "Your event was sent to the admin team. We'll notify you once it's reviewed."

@@ -22,15 +22,18 @@ export function Login() {
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
         {/* Left Side - Branding */}
         <div className="hidden md:block space-y-6">
-          <div className="space-y-4">
-            <div className="w-20 h-20 bg-kfupm-green rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-white text-3xl">K</span>
-            </div>
-            <div>
-              <h1 className="text-4xl text-kfupm-green mb-2">KFUPM Events Hub</h1>
-              <p className="text-xl text-gray-600">
-                Your gateway to campus events and activities
-              </p>
+            <div className="space-y-4">
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ width: 130, height: 130 }}
+              >
+                <img src="/dist/assets/KFUPM.png" alt="KFUPM logo" className="w-full h-full object-contain" />
+              </div>
+              <div>
+                <h1 className="text-4xl text-kfupm-green mb-2">KFUPM Events Hub</h1>
+                <p className="text-xl text-gray-600">
+                  Your gateway to campus events and activities
+                </p>
             </div>
           </div>
           
@@ -78,8 +81,11 @@ export function Login() {
           <div className="space-y-6">
             {/* Mobile Branding */}
             <div className="md:hidden text-center">
-              <div className="w-16 h-16 bg-kfupm-green rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-4">
-                <span className="text-white text-2xl">K</span>
+              <div
+                className="rounded-2xl overflow-hidden mx-auto mb-4"
+                style={{ width: 120, height: 120 }}
+              >
+                <img src="/dist/assets/KFUPM.png" alt="KFUPM logo" className="w-full h-full object-contain" />
               </div>
               <h2 className="text-kfupm-green">KFUPM Events Hub</h2>
             </div>

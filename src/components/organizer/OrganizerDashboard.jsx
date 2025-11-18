@@ -7,8 +7,9 @@ import { Input } from "../ui/input";
 import { useNavigation } from "../../contexts/NavigationContext";
 
 export function OrganizerDashboard() {
-  const { navigateTo, setActiveEvent, eventOverrides } = useNavigation();
-  const myEvents = [
+  const { navigateTo, setActiveEvent, eventOverrides, createdEvents, removeCreatedEvent, showSuccessPopup } = useNavigation();
+
+  const seedEvents = [
     {
       title: "AI & Machine Learning Workshop",
       status: "Approved",
@@ -54,12 +55,32 @@ export function OrganizerDashboard() {
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
 
-  const mergedEvents = myEvents.map((evt) =>
-    eventOverrides[evt.title] ? { ...evt, ...eventOverrides[evt.title] } : evt
-  );
+  const formatDisplayDate = (value) => {
+    if (!value) return "Date TBD";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+  };
+
+  const mergeWithOverrides = (evt) =>
+    evt.isCustom || !eventOverrides[evt.title] ? evt : { ...evt, ...eventOverrides[evt.title] };
+
+  const combinedEvents = useMemo(() => {
+    const seeded = seedEvents.map((evt) => mergeWithOverrides(evt));
+    const formattedCustom = createdEvents.map((evt) => ({
+      ...evt,
+      date: formatDisplayDate(evt.startDate || evt.date),
+    }));
+    return [...formattedCustom, ...seeded];
+  }, [seedEvents, createdEvents, eventOverrides]);
+
+  const totalEvents = combinedEvents.length;
+  const pendingCount = combinedEvents.filter((e) => e.status === "Pending").length;
+  const totalAttendance = combinedEvents.reduce((sum, e) => sum + (e.registrations || 0), 0);
+  const upcomingCount = combinedEvents.filter((e) => e.status === "Approved" || e.status === "Pending").length;
 
   const filteredEvents = useMemo(() => {
-    return mergedEvents.filter((event) => {
+    return combinedEvents.filter((event) => {
       const matchesSearch =
         event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -72,7 +93,7 @@ export function OrganizerDashboard() {
 
       return matchesSearch && matchesStatus && matchesCategory;
     });
-  }, [mergedEvents, searchTerm, statusFilter, categoryFilter]);
+  }, [combinedEvents, searchTerm, statusFilter, categoryFilter]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,10 +115,10 @@ export function OrganizerDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard title="Total Events" value={myEvents.length.toString()} subtitle="2 approved" />
-          <StatCard title="Pending" value="1" subtitle="Awaiting approval" />
-          <StatCard title="Total Attendance" value="253" subtitle="Across all events" icon={Users} />
-          <StatCard title="Upcoming" value="3" subtitle="3 approved" />
+          <StatCard title="Total Events" value={totalEvents.toString()} subtitle="Across all sources" />
+          <StatCard title="Pending" value={pendingCount.toString()} subtitle="Awaiting approval" />
+          <StatCard title="Total Attendance" value={totalAttendance.toString()} subtitle="Across all events" icon={Users} />
+          <StatCard title="Upcoming" value={upcomingCount.toString()} subtitle="Approved or pending" />
         </div>
 
         {/* Search & Filter */}
@@ -161,7 +182,7 @@ export function OrganizerDashboard() {
               <div className="p-6 text-gray-500">No events match your filters.</div>
             )}
             {filteredEvents.map((event, idx) => (
-              <div key={idx} className="p-6 hover:bg-gray-50">
+              <div key={event.id || idx} className="p-6 hover:bg-gray-50">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h4 className="mb-1">{event.title}</h4>
@@ -185,17 +206,18 @@ export function OrganizerDashboard() {
                   <div className="text-sm">
                     <span className="text-gray-600">Registrations: </span>
                     <span>
-                      {event.registrations}/{event.capacity}
+                      {event.registrations}/{event.capacity || 0}
                     </span>
                   </div>
                   <div className="flex-1 bg-gray-200 rounded-full h-2">
                     <div
                       className="bg-kfupm-green h-2 rounded-full"
                       style={{
-                        width: `${Math.min(
-                          100,
-                          Math.round((event.registrations / event.capacity) * 100)
-                        )}%`,
+                        width: `${
+                          event.capacity && event.capacity > 0
+                            ? Math.min(100, Math.round((event.registrations / event.capacity) * 100))
+                            : 0
+                        }%`,
                       }}
                     />
                   </div>
@@ -206,9 +228,7 @@ export function OrganizerDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const merged = eventOverrides[event.title]
-                        ? { ...event, ...eventOverrides[event.title] }
-                        : event;
+                      const merged = mergeWithOverrides(event);
                       setActiveEvent(merged);
                       navigateTo("organizer-event-details");
                     }}
@@ -219,9 +239,7 @@ export function OrganizerDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const merged = eventOverrides[event.title]
-                        ? { ...event, ...eventOverrides[event.title] }
-                        : event;
+                      const merged = mergeWithOverrides(event);
                       setActiveEvent(merged);
                       navigateTo("organizer-create");
                     }}
@@ -232,15 +250,26 @@ export function OrganizerDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const merged = eventOverrides[event.title]
-                        ? { ...event, ...eventOverrides[event.title] }
-                        : event;
+                      const merged = mergeWithOverrides(event);
                       setActiveEvent(merged);
                       navigateTo("organizer-event-details");
                     }}
                   >
                     Registrations
                   </Button>
+                  {event.status === "Pending" && event.isCustom && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => {
+                        removeCreatedEvent(event.id);
+                        showSuccessPopup("Event deleted", `"${event.title}" was removed.`);
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
