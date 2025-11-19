@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -8,10 +9,61 @@ import { Card } from "../ui/card";
 import { useNavigation } from "../../contexts/NavigationContext";
 
 export function SignUp() {
-  const { navigateTo, showSuccessPopup } = useNavigation();
+  const { navigateTo, showSuccessPopup, showErrorPopup } = useNavigation();
+
+  const [form, setForm] = useState({
+    fullname: "",
+    kfupmId: "",
+    email: "",
+    role: "",
+    department: "",
+    password: "",
+    confirmPassword: "",
+    terms: false,
+  });
+
+  const handleInput = (key) => (e) => {
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  };
 
   const handleSignUp = (e) => {
     e.preventDefault();
+
+    const missing = [
+      { key: "fullname", label: "Full Name" },
+      { key: "kfupmId", label: "KFUPM ID" },
+      { key: "email", label: "Email" },
+      { key: "role", label: "Account Type" },
+      { key: "department", label: "Department/College" },
+      { key: "password", label: "Password" },
+      { key: "confirmPassword", label: "Confirm Password" },
+    ].filter((f) => !form[f.key]?.toString().trim());
+
+    if (missing.length > 0) {
+      showErrorPopup("Missing required fields", `Please fill: ${missing.map((m) => m.label).join(", ")}.`);
+      return;
+    }
+
+    if (!form.email.toLowerCase().includes("@kfupm.edu.sa")) {
+      showErrorPopup("Invalid email", "Use your official KFUPM email address.");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      showErrorPopup("Weak password", "Password must be at least 8 characters.");
+      return;
+    }
+
+    if (form.password !== form.confirmPassword) {
+      showErrorPopup("Passwords do not match", "Make sure both passwords are the same.");
+      return;
+    }
+
+    if (!form.terms) {
+      showErrorPopup("Agree to terms", "You must accept the Terms and Privacy Policy to continue.");
+      return;
+    }
+
     // Show success message
     showSuccessPopup(
       "Account Created!",
@@ -28,8 +80,15 @@ export function SignUp() {
       <div className="w-full max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-kfupm-green rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-4">
-            <span className="text-white text-2xl">K</span>
+          <div
+            className="rounded-md overflow-hidden mx-auto mb-4"
+            style={{ width: 130, height: 130 }}
+          >
+            <img
+              src="/dist/assets/KFUPM.png"
+              alt="KFUPM logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className="text-3xl text-kfupm-green mb-2">Join KFUPM Events Hub</h1>
           <p className="text-gray-600">Create your account to start exploring campus events</p>
@@ -61,6 +120,8 @@ export function SignUp() {
                     type="text"
                     placeholder="Ahmed Mohammed Al-Ali"
                     className="pl-10"
+                    value={form.fullname}
+                    onChange={handleInput("fullname")}
                   />
                 </div>
               </div>
@@ -75,6 +136,8 @@ export function SignUp() {
                     type="text"
                     placeholder="202012345"
                     className="pl-10"
+                    value={form.kfupmId}
+                    onChange={handleInput("kfupmId")}
                   />
                 </div>
               </div>
@@ -89,6 +152,8 @@ export function SignUp() {
                     type="email"
                     placeholder="s202012345@kfupm.edu.sa"
                     className="pl-10"
+                    value={form.email}
+                    onChange={handleInput("email")}
                   />
                 </div>
                 <p className="text-xs text-gray-500">
@@ -99,7 +164,7 @@ export function SignUp() {
               {/* Role Selection */}
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="role">Account Type *</Label>
-                <Select>
+                <Select value={form.role} onValueChange={(val) => setForm((prev) => ({ ...prev, role: val }))}>
                   <SelectTrigger id="role">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -115,7 +180,7 @@ export function SignUp() {
               {/* Department/College */}
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="department">Department/College *</Label>
-                <Select>
+                <Select value={form.department} onValueChange={(val) => setForm((prev) => ({ ...prev, department: val }))}>
                   <SelectTrigger id="department">
                     <SelectValue placeholder="Select your department" />
                   </SelectTrigger>
@@ -140,6 +205,8 @@ export function SignUp() {
                     type="password"
                     placeholder="Create a strong password"
                     className="pl-10"
+                    value={form.password}
+                    onChange={handleInput("password")}
                   />
                 </div>
                 <p className="text-xs text-gray-500">
@@ -157,6 +224,8 @@ export function SignUp() {
                     type="password"
                     placeholder="Re-enter your password"
                     className="pl-10"
+                    value={form.confirmPassword}
+                    onChange={handleInput("confirmPassword")}
                   />
                 </div>
               </div>
@@ -164,7 +233,12 @@ export function SignUp() {
 
             {/* Terms and Conditions */}
             <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-              <Checkbox id="terms" className="mt-1" />
+              <Checkbox
+                id="terms"
+                className="mt-1"
+                checked={form.terms}
+                onCheckedChange={(val) => setForm((prev) => ({ ...prev, terms: Boolean(val) }))}
+              />
               <div>
                 <Label htmlFor="terms" className="text-sm cursor-pointer">
                   I agree to the{" "}

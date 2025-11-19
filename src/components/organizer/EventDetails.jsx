@@ -1,5 +1,6 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "../Header";
-import { Calendar, MapPin, Users, FileText, Download, Mail } from "lucide-react";
+import { Calendar, MapPin, Users, FileText, Download, Mail, Upload, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Badge } from "../ui/badge";
@@ -14,35 +15,63 @@ import {
 } from "../ui/table";
 import { useNavigation } from "../../contexts/NavigationContext";
 
-const registrations = [
-  { id: "S12345", name: "Ahmed Ali", email: "s12345@kfupm.edu.sa", registeredDate: "May 02, 2025", checkedIn: true },
-  { id: "S12346", name: "Sara Khalid", email: "s12346@kfupm.edu.sa", registeredDate: "May 03, 2025", checkedIn: false },
-  { id: "S12347", name: "Faisal Omar", email: "s12347@kfupm.edu.sa", registeredDate: "May 05, 2025", checkedIn: true },
-  { id: "S12348", name: "Mona Z.", email: "s12348@kfupm.edu.sa", registeredDate: "May 07, 2025", checkedIn: false },
-  { id: "F001",   name: "Dr. Al-Harbi", email: "faculty1@kfupm.edu.sa", registeredDate: "May 08, 2025", checkedIn: false },
-];
-
-const feedback = [
-  { rating: 5, comment: "Excellent workshop—great hands-on session!", date: "May 16, 2025" },
-  { rating: 4, comment: "Very informative, but could use more time for Q&A.", date: "May 16, 2025" },
-  { rating: 5, comment: "Loved the demos and examples.", date: "May 17, 2025" },
-  { rating: 3, comment: "Content was good, but the venue was too crowded.", date: "May 17, 2025" },
-];
+const seededDataByTitle = {
+  "AI & Machine Learning Workshop": {
+    registrations: [
+      { id: "S12345", name: "Ahmed Ali", email: "s12345@kfupm.edu.sa", registeredDate: "May 02, 2025", checkedIn: true },
+      { id: "S12346", name: "Sara Khalid", email: "s12346@kfupm.edu.sa", registeredDate: "May 03, 2025", checkedIn: false },
+      { id: "S12347", name: "Faisal Omar", email: "s12347@kfupm.edu.sa", registeredDate: "May 05, 2025", checkedIn: true },
+      { id: "S12348", name: "Mona Z.", email: "s12348@kfupm.edu.sa", registeredDate: "May 07, 2025", checkedIn: false },
+      { id: "F001",   name: "Dr. Al-Harbi", email: "faculty1@kfupm.edu.sa", registeredDate: "May 08, 2025", checkedIn: false },
+    ],
+    feedback: [
+      { rating: 5, comment: "Excellent workshop—great hands-on session!", date: "May 16, 2025" },
+      { rating: 4, comment: "Very informative, but could use more time for Q&A.", date: "May 16, 2025" },
+      { rating: 5, comment: "Loved the demos and examples.", date: "May 17, 2025" },
+      { rating: 3, comment: "Content was good, but the venue was too crowded.", date: "May 17, 2025" },
+    ],
+    files: [
+      { name: "Workshop_Agenda.pdf", size: "182 KB", uploadDate: "May 12, 2025" },
+      { name: "AI_Presentation_Slides.pptx", size: "6.3 MB", uploadDate: "May 15, 2025" },
+      { name: "ML_Resources_Guide.pdf", size: "940 KB", uploadDate: "May 15, 2025" },
+      { name: "Event_Poster.png", size: "1.2 MB", uploadDate: "May 09, 2025" },
+    ],
+  },
+  "Cybersecurity Seminar": {
+    registrations: [
+      { id: "S20001", name: "Yousef M.", email: "s20001@kfupm.edu.sa", registeredDate: "May 10, 2025", checkedIn: false },
+      { id: "S20002", name: "Laila S.", email: "s20002@kfupm.edu.sa", registeredDate: "May 11, 2025", checkedIn: false },
+      { id: "S20003", name: "Huda A.", email: "s20003@kfupm.edu.sa", registeredDate: "May 11, 2025", checkedIn: false },
+    ],
+    feedback: [
+      { rating: 4, comment: "Great speakers and relevant topics.", date: "May 23, 2025" },
+      { rating: 3, comment: "Would like a longer Q&A session.", date: "May 23, 2025" },
+    ],
+    files: [
+      { name: "Seminar_Outline.pdf", size: "520 KB", uploadDate: "May 18, 2025" },
+      { name: "Security_Checklist.docx", size: "280 KB", uploadDate: "May 18, 2025" },
+    ],
+  },
+};
 
 const previousAnnouncements = [
   { message: "Reminder: Workshop starts at 2:00 PM sharp. Please arrive 10 minutes early.", date: "May 14, 2025", time: "10:00 AM" },
   { message: "Parking information: Use Parking Lot B near Building 5.", date: "May 13, 2025", time: "3:30 PM" },
 ];
 
-const files = [
-  { name: "Workshop_Agenda.pdf",            size: "182 KB", uploadDate: "May 12, 2025" },
-  { name: "AI_Presentation_Slides.pptx",    size: "6.3 MB", uploadDate: "May 15, 2025" },
-  { name: "ML_Resources_Guide.pdf",         size: "940 KB", uploadDate: "May 15, 2025" },
-  { name: "Event_Poster.png",               size: "1.2 MB", uploadDate: "May 09, 2025" },
-];
+const formatFileSize = (bytes) => {
+  if (!bytes && bytes !== 0) return "";
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(0)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+};
+
+const formatUploadDate = () =>
+  new Date().toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
 
 export function EventDetails() {
   const { activeEvent, navigateTo, setActiveEvent, eventOverrides } = useNavigation();
+  const fileInputRef = useRef(null);
   const fallbackEvent = {
     title: "AI & Machine Learning Workshop",
     status: "Approved",
@@ -57,10 +86,48 @@ export function EventDetails() {
     ? { ...activeEvent, ...eventOverrides[activeEvent.title] }
     : activeEvent;
   const event = overridden || fallbackEvent;
+  const eventKey = event.id || event.title || "default-event";
+
+  const [dataByEvent, setDataByEvent] = useState({});
+
+  useEffect(() => {
+    setDataByEvent((prev) => {
+      if (prev[eventKey]) return prev;
+      const seeded = seededDataByTitle[event.title] || {
+        registrations: [],
+        feedback: [],
+        files: [],
+      };
+      return { ...prev, [eventKey]: seeded };
+    });
+  }, [eventKey, event.title]);
+
+  const currentData = useMemo(() => dataByEvent[eventKey] || { registrations: [], feedback: [], files: [] }, [dataByEvent, eventKey]);
+
   const registrationFill =
     event.capacity && event.capacity > 0
-      ? Math.min(100, Math.round((event.registrations / event.capacity) * 100))
+      ? Math.min(100, Math.round(((event.registrations || currentData.registrations.length) / event.capacity) * 100))
       : 0;
+
+  const addFiles = (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const additions = Array.from(fileList).map((file) => ({
+      name: file.name,
+      size: formatFileSize(file.size),
+      uploadDate: formatUploadDate(),
+    }));
+    setDataByEvent((prev) => ({
+      ...prev,
+      [eventKey]: { ...currentData, files: [...currentData.files, ...additions] },
+    }));
+  };
+
+  const deleteFile = (name) => {
+    setDataByEvent((prev) => ({
+      ...prev,
+      [eventKey]: { ...currentData, files: currentData.files.filter((f) => f.name !== name) },
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,7 +176,7 @@ export function EventDetails() {
               <div>
                 <p className="text-sm text-gray-500">Capacity</p>
                 <p>
-                  {event.registrations}/{event.capacity} registered
+                  {event.registrations || currentData.registrations.length}/{event.capacity} registered
                 </p>
                 <div className="mt-2 bg-gray-200 rounded-full h-2 w-full">
                   <div className="bg-kfupm-green h-2 rounded-full" style={{ width: `${registrationFill}%` }} />
@@ -122,10 +189,10 @@ export function EventDetails() {
         {/* Tabs */}
         <Tabs defaultValue="registrations" className="w-full">
           <TabsList className="mb-6 bg-white border border-gray-200">
-            <TabsTrigger value="registrations">Registrations ({registrations.length})</TabsTrigger>
+            <TabsTrigger value="registrations">Registrations ({currentData.registrations.length})</TabsTrigger>
             <TabsTrigger value="announcements">Announcements</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="feedback">Feedback ({feedback.length})</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback ({currentData.feedback.length})</TabsTrigger>
           </TabsList>
 
           {/* Registrations Tab */}
@@ -149,7 +216,7 @@ export function EventDetails() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {registrations.map((reg) => (
+                  {currentData.registrations.map((reg) => (
                     <TableRow key={reg.id}>
                       <TableCell>{reg.id}</TableCell>
                       <TableCell>{reg.name}</TableCell>
@@ -177,9 +244,9 @@ export function EventDetails() {
           <TabsContent value="announcements">
             <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
               <h3 className="mb-4">Send Announcement to Participants</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                This message will be sent to all {registrations.length} registered participants via email and in-app notification.
-              </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  This message will be sent to all {currentData.registrations.length} registered participants via email and in-app notification.
+                </p>
               <Textarea placeholder="Type your announcement message here..." className="mb-4 min-h-32 bg-gray-50" />
               <div className="flex gap-3">
                 <Button className="bg-kfupm-green hover:bg-kfupm-green-dark text-white gap-2">
@@ -210,16 +277,31 @@ export function EventDetails() {
             <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3>Event Materials & Resources</h3>
-                <Button className="bg-kfupm-green hover:bg-kfupm-green-dark text-white gap-2">
-                  <FileText size={16} />
-                  Upload New File
-                </Button>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    multiple
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button className="bg-kfupm-green hover:bg-kfupm-green-dark text-white gap-2" onClick={() => fileInputRef.current?.click()}>
+                    <Upload size={16} />
+                    Upload New File
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-3">
-                {files.map((file, idx) => (
+                {currentData.files.length === 0 && (
+                  <div className="text-sm text-gray-600">No files uploaded yet.</div>
+                )}
+                {currentData.files.map((file, idx) => (
                   <div
-                    key={idx}
+                    key={`${file.name}-${idx}`}
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-3">
@@ -236,7 +318,7 @@ export function EventDetails() {
                         <Download size={14} />
                         Download
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-red-600">
+                      <Button variant="ghost" size="sm" className="text-red-600" onClick={() => deleteFile(file.name)}>
                         Delete
                       </Button>
                     </div>
@@ -254,15 +336,24 @@ export function EventDetails() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="p-4 bg-gray-50 rounded-lg text-center">
                     <p className="text-sm text-gray-600 mb-1">Average Rating</p>
-                    <p className="text-3xl text-kfupm-green">4.25 / 5</p>
+                    <p className="text-3xl text-kfupm-green">
+                      {currentData.feedback.length
+                        ? (currentData.feedback.reduce((sum, f) => sum + f.rating, 0) / currentData.feedback.length).toFixed(2)
+                        : "0.00"}{" "}
+                      / 5
+                    </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg text-center">
                     <p className="text-sm text-gray-600 mb-1">Total Responses</p>
-                    <p className="text-3xl">{feedback.length}</p>
+                    <p className="text-3xl">{currentData.feedback.length}</p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-sm text-gray-600 mb-1">Response Rate</p>
-                    <p className="text-3xl">8.9%</p>
+                    <p className="text-sm text-gray-600 mb-1">Positive Feedback</p>
+                    <p className="text-3xl text-green-700">
+                      {currentData.feedback.length
+                        ? `${Math.round((currentData.feedback.filter((f) => f.rating >= 4).length / currentData.feedback.length) * 100)}%`
+                        : "0%"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -275,7 +366,10 @@ export function EventDetails() {
                     Export Feedback
                   </Button>
                 </div>
-                {feedback.map((item, idx) => (
+                {currentData.feedback.length === 0 && (
+                  <div className="text-sm text-gray-600">No feedback submitted yet.</div>
+                )}
+                {currentData.feedback.map((item, idx) => (
                   <div key={idx} className="p-4 border border-gray-200 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1">

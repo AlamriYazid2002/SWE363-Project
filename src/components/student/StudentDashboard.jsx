@@ -93,12 +93,19 @@ const events = [
 ];
 
 export function StudentDashboard() {
-  const { navigateTo, showSuccessPopup } = useNavigation();
+  const { navigateTo, showSuccessPopup, showErrorPopup } = useNavigation();
 
-  const handleRegister = (eventTitle) => {
+  const handleRegister = (event) => {
+    if (event.status && event.status !== "Approved") {
+      showErrorPopup(
+        "Registration unavailable",
+        "This event is pending approval. Registration will open once it's approved."
+      );
+      return;
+    }
     showSuccessPopup(
       "Registration Successful!",
-      `You have successfully registered for "${eventTitle}". Check your email for confirmation.`
+      `You have successfully registered for "${event.title}". Check your email for confirmation.`
     );
   };
 
@@ -198,10 +205,11 @@ export function StudentDashboard() {
 
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => handleRegister(event.title)}
-                    className="flex-1 bg-kfupm-green hover:bg-kfupm-green-dark text-white"
+                    onClick={() => handleRegister(event)}
+                    disabled={event.status && event.status !== "Approved"}
+                    className="flex-1 bg-kfupm-green hover:bg-kfupm-green-dark text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Register
+                    {event.status && event.status !== "Approved" ? "Pending Approval" : "Register"}
                   </Button>
                   <Button
                     onClick={() => navigateTo("student-event-details")}
