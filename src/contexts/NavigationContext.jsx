@@ -1,5 +1,7 @@
 import { createContext, useContext, useState } from "react";
 
+const DEFAULT_FAVORITE_EVENT_IDS = [4];
+
 const NavigationContext = createContext(undefined);
 
 export function NavigationProvider({ children }) {
@@ -9,6 +11,8 @@ export function NavigationProvider({ children }) {
   const [activeEvent, setActiveEvent] = useState(null);
   const [eventOverrides, setEventOverrides] = useState({});
   const [createdEvents, setCreatedEvents] = useState([]);
+  const [favoriteEventIds, setFavoriteEventIds] = useState(DEFAULT_FAVORITE_EVENT_IDS);
+  const [shouldHighlightShare, setShouldHighlightShare] = useState(false);
 
   const navigateTo = (page) => {
     setCurrentPage(page);
@@ -54,6 +58,15 @@ export function NavigationProvider({ children }) {
     setCreatedEvents((prev) => prev.filter((evt) => evt.id !== id));
   };
 
+  const toggleFavoriteEvent = (eventId) => {
+    setFavoriteEventIds((prev) =>
+      prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]
+    );
+  };
+
+  const requestShareHighlight = () => setShouldHighlightShare(true);
+  const clearShareHighlight = () => setShouldHighlightShare(false);
+
   const showSuccessPopup = (title, message) => {
     setPopup({ type: "success", title, message });
   };
@@ -75,6 +88,8 @@ export function NavigationProvider({ children }) {
         activeEvent,
         eventOverrides,
         createdEvents,
+        favoriteEventIds,
+        shouldHighlightShare,
         navigateTo,
         login,
         logout,
@@ -83,6 +98,9 @@ export function NavigationProvider({ children }) {
         addCreatedEvent,
         updateCreatedEvent,
         removeCreatedEvent,
+        toggleFavoriteEvent,
+        requestShareHighlight,
+        clearShareHighlight,
         showSuccessPopup,
         showErrorPopup,
         closePopup,

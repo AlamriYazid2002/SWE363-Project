@@ -1,9 +1,13 @@
+import { useMemo } from "react";
 import { Header } from "../Header";
 import { Calendar, MapPin, QrCode, Star, Heart, CheckCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { useNavigation } from "../../contexts/NavigationContext";
+import { getStudentEvents } from "../../data/studentEvents";
+
+const studentEvents = getStudentEvents();
 
 const registeredEvents = [
   {
@@ -53,21 +57,13 @@ const pastEvents = [
   },
 ];
 
-const favoriteEvents = [
-  {
-    id: 5,
-    title: "Tech Career Fair 2025",
-    organizer: "Career Services",
-    date: "Jun 02, 2025",
-    time: "10:00 AM – 4:00 PM",
-    venue: "Exhibition Hall",
-    registered: false,
-    image: "https://images.unsplash.com/photo-1503428593586-e225b39bddfe?q=80&w=1200&auto=format&fit=crop",
-  },
-];
-
 export function MyEvents() {
-  const { navigateTo } = useNavigation();
+  const { navigateTo, favoriteEventIds, toggleFavoriteEvent, setActiveEvent } = useNavigation();
+  const favoriteSet = useMemo(() => new Set(favoriteEventIds), [favoriteEventIds]);
+  const favoriteEvents = useMemo(
+    () => studentEvents.filter((event) => favoriteSet.has(event.id)),
+    [favoriteSet]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -131,7 +127,10 @@ export function MyEvents() {
                       <Button
                         variant="outline"
                         className="flex-1"
-                        onClick={() => navigateTo("student-event-details")}
+                        onClick={() => {
+                          setActiveEvent(event);
+                          navigateTo("student-event-details");
+                        }}
                       >
                         View Details
                       </Button>
@@ -204,50 +203,69 @@ export function MyEvents() {
           {/* Favorite Events */}
           <TabsContent value="favorites">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {favoriteEvents.map((event) => (
-                <div key={event.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                  <div className="relative h-48 bg-gray-200">
-                    <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
-                    <button
-                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md"
-                      aria-label="Favorited"
-                    >
-                      <Heart size={18} className="fill-red-500 text-red-500" />
-                    </button>
-                  </div>
-
-                  <div className="p-6">
-                    <div className="mb-3">
-                      <h3 className="mb-1">{event.title}</h3>
-                      <p className="text-sm text-gray-500">by {event.organizer}</p>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar size={16} className="text-kfupm-green" />
-                        <span>{event.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin size={16} className="text-kfupm-green" />
-                        <span>{event.venue}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button className="flex-1 bg-kfupm-green hover:bg-kfupm-green-dark text-white">
-                        {event.registered ? "View Registration" : "Register Now"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => navigateTo(`/events/${event.id}`)}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
+              {favoriteEvents.length === 0 && (
+                <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-200 bg-white rounded-lg">
+                  You haven’t added any favorites yet. Tap the heart icon on events to save them here.
                 </div>
-              ))}
+              )}
+              {favoriteEvents.map((event) => {
+                const isFavorite = favoriteSet.has(event.id);
+                return (
+                  <div
+                    key={event.id}
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+                  >
+                    <div className="relative h-48 bg-gray-200">
+                      <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => toggleFavoriteEvent(event.id)}
+                        className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md"
+                        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                        aria-pressed={isFavorite}
+                      >
+                        <Heart size={18} className={isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"} />
+                      </button>
+                    </div>
+
+                    <div className="p-6">
+                      <div className="mb-3">
+                        <h3 className="mb-1">{event.title}</h3>
+                        <p className="text-sm text-gray-500">by {event.organizer}</p>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar size={16} className="text-kfupm-green" />
+                          <span>
+                            {event.date} • {event.time}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin size={16} className="text-kfupm-green" />
+                          <span>{event.venue}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button className="flex-1 bg-kfupm-green hover:bg-kfupm-green-dark text-white">
+                          Register Now
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setActiveEvent(event);
+                            navigateTo("student-event-details");
+                          }}
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </TabsContent>
         </Tabs>
@@ -255,3 +273,4 @@ export function MyEvents() {
     </div>
   );
 }
+
