@@ -75,10 +75,10 @@ function AppContent() {
       
       {/* Popup Overlays */}
       {popup.type === "success" && (
-        <SuccessPopup title={popup.title} message={popup.message} />
+        <SuccessPopup title={popup.title} message={popup.message} actionLabel={popup.actionLabel} />
       )}
       {popup.type === "error" && (
-        <ErrorPopup title={popup.title} message={popup.message} />
+        <ErrorPopup title={popup.title} message={popup.message} actionLabel={popup.actionLabel} />
       )}
     </div>
   );

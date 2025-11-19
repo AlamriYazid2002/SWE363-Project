@@ -2,8 +2,9 @@ import { CheckCircle2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useNavigation } from "../../contexts/NavigationContext";
 
-export function SuccessPopup({ title, message }) {
+export function SuccessPopup({ title, message, actionLabel }) {
   const { closePopup } = useNavigation();
+  const buttonLabel = actionLabel || "Close";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -30,7 +31,7 @@ export function SuccessPopup({ title, message }) {
           onClick={closePopup}
           className="w-full bg-kfupm-green hover:bg-kfupm-green-dark text-white"
         >
-          Continue
+          {buttonLabel}
         </Button>
       </div>
     </div>

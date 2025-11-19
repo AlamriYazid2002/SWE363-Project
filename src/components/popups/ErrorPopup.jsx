@@ -2,8 +2,9 @@ import { XCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { useNavigation } from "../../contexts/NavigationContext";
 
-export function ErrorPopup({ title, message }) {
+export function ErrorPopup({ title, message, actionLabel }) {
   const { closePopup } = useNavigation();
+  const buttonLabel = actionLabel || "Close";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -22,25 +23,16 @@ export function ErrorPopup({ title, message }) {
         
         {/* Error Message */}
         <p className="text-gray-600 mb-6">
-          {message || "Something went wrong. Please check your information and try again."}
+          {message || "Something went wrong. Please check your information."}
         </p>
         
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <Button 
-            onClick={closePopup}
-            variant="outline"
-            className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={closePopup}
-            className="flex-1 bg-kfupm-green hover:bg-kfupm-green-dark text-white"
-          >
-            Try Again
-          </Button>
-        </div>
+        {/* Action Button */}
+        <Button 
+          onClick={closePopup}
+          className="w-full bg-kfupm-green hover:bg-kfupm-green-dark text-white"
+        >
+          {buttonLabel}
+        </Button>
       </div>
     </div>
   );
