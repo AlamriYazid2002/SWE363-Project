@@ -12,6 +12,7 @@ export function NavigationProvider({ children }) {
   const [eventOverrides, setEventOverrides] = useState({});
   const [createdEvents, setCreatedEvents] = useState([]);
   const [favoriteEventIds, setFavoriteEventIds] = useState(DEFAULT_FAVORITE_EVENT_IDS);
+  const [cancelledRegistrations, setCancelledRegistrations] = useState([]);
   const [shouldHighlightShare, setShouldHighlightShare] = useState(false);
 
   const navigateTo = (page) => {
@@ -63,6 +64,11 @@ export function NavigationProvider({ children }) {
       prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]
     );
   };
+  const cancelRegistration = (eventId) => {
+    setCancelledRegistrations((prev) =>
+      prev.includes(eventId) ? prev : [...prev, eventId]
+    );
+  };
 
   const requestShareHighlight = () => setShouldHighlightShare(true);
   const clearShareHighlight = () => setShouldHighlightShare(false);
@@ -89,6 +95,7 @@ export function NavigationProvider({ children }) {
         eventOverrides,
         createdEvents,
         favoriteEventIds,
+        cancelledRegistrations,
         shouldHighlightShare,
         navigateTo,
         login,
@@ -99,6 +106,7 @@ export function NavigationProvider({ children }) {
         updateCreatedEvent,
         removeCreatedEvent,
         toggleFavoriteEvent,
+        cancelRegistration,
         requestShareHighlight,
         clearShareHighlight,
         showSuccessPopup,

@@ -4,9 +4,11 @@ import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { useState } from "react";
+import { useNavigation } from "../../contexts/NavigationContext";
 
 export function FeedbackForm() {
   const [rating, setRating] = useState(0);
+  const { showSuccessPopup, navigateTo } = useNavigation();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -154,14 +156,23 @@ export function FeedbackForm() {
 
             {/* Submit Button */}
             <div className="flex gap-4 pt-4 border-t border-gray-200">
-              <Button className="bg-kfupm-green hover:bg-kfupm-green-dark text-white gap-2">
+              <Button
+                type="button"
+                className="bg-kfupm-green hover:bg-kfupm-green-dark text-white gap-2"
+                onClick={() => {
+                  showSuccessPopup("Thanks for your feedback!", "We appreciate you taking the time to share it.");
+                  navigateTo("student-my-events");
+                }}
+              >
                 <Send size={16} />
                 Submit Feedback
               </Button>
-              <Button variant="outline">
-                Save
-              </Button>
-              <Button variant="ghost" className="ml-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                className="ml-auto"
+                onClick={() => navigateTo("student-my-events")}
+              >
                 Skip
               </Button>
             </div>

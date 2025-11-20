@@ -58,8 +58,18 @@ const pastEvents = [
 ];
 
 export function MyEvents() {
-  const { navigateTo, favoriteEventIds, toggleFavoriteEvent, setActiveEvent } = useNavigation();
+  const {
+    navigateTo,
+    favoriteEventIds,
+    toggleFavoriteEvent,
+    setActiveEvent,
+    cancelledRegistrations,
+  } = useNavigation();
   const favoriteSet = useMemo(() => new Set(favoriteEventIds), [favoriteEventIds]);
+  const activeRegisteredEvents = useMemo(
+    () => registeredEvents.filter((event) => !cancelledRegistrations.includes(event.id)),
+    [cancelledRegistrations]
+  );
   const favoriteEvents = useMemo(
     () => studentEvents.filter((event) => favoriteSet.has(event.id)),
     [favoriteSet]
@@ -77,7 +87,7 @@ export function MyEvents() {
 
         <Tabs defaultValue="registered" className="w-full">
           <TabsList className="mb-6 bg-white border border-gray-200">
-            <TabsTrigger value="registered">Registered ({registeredEvents.length})</TabsTrigger>
+            <TabsTrigger value="registered">Registered ({activeRegisteredEvents.length})</TabsTrigger>
             <TabsTrigger value="past">Past Events ({pastEvents.length})</TabsTrigger>
             <TabsTrigger value="favorites">Favorites ({favoriteEvents.length})</TabsTrigger>
           </TabsList>
@@ -85,7 +95,12 @@ export function MyEvents() {
           {/* Registered Events */}
           <TabsContent value="registered">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {registeredEvents.map((event) => (
+              {activeRegisteredEvents.length === 0 && (
+                <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-200 bg-white rounded-lg">
+                  You have no upcoming registrations. Explore events and register to see them here.
+                </div>
+              )}
+              {activeRegisteredEvents.map((event) => (
                 <div key={event.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                   <div className="h-48 bg-gray-200">
                     <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
@@ -180,7 +195,7 @@ export function MyEvents() {
                       </div>
                     </div>
 
-                    {event.attended && !event.feedbackGiven && (
+                    {event.attended && !event.feedbackGiven ? (
                       <Button
                         onClick={() => navigateTo("student-feedback")}
                         className="w-full bg-kfupm-green hover:bg-kfupm-green-dark text-white gap-2"
@@ -188,8 +203,7 @@ export function MyEvents() {
                         <Star size={16} />
                         Submit Feedback
                       </Button>
-                    )}
-                    {event.feedbackGiven && (
+                    ) : (
                       <Button variant="outline" className="w-full" disabled>
                         Feedback Submitted
                       </Button>
