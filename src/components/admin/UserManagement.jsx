@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "../Header";
 import { Search, Filter, MoreVertical, UserCheck, UserX, Trash2, Edit } from "lucide-react";
 import { Button } from "../ui/button";
@@ -28,26 +28,43 @@ import {
 } from "../ui/dialog";
 import { Label } from "../ui/label";
 import { useNavigation } from "../../contexts/NavigationContext";
-
-const initialUsers = [
-  { id: "S12345", name: "Ahmed Ali", email: "s12345@kfupm.edu.sa", role: "Student", status: "Active", joinDate: "Sep 10, 2025" },
-  { id: "O001", name: "IEEE Chapter", email: "ieee@kfupm.edu.sa", role: "Organizer", status: "Pending", joinDate: "Oct 02, 2025" },
-  { id: "S12346", name: "Sara Khalid", email: "s12346@kfupm.edu.sa", role: "Student", status: "Active", joinDate: "Aug 28, 2025" },
-  { id: "O002", name: "Sports Club", email: "sports@kfupm.edu.sa", role: "Organizer", status: "Active", joinDate: "Jul 14, 2025" },
-  { id: "S12347", name: "Faisal Omar", email: "s12347@kfupm.edu.sa", role: "Student", status: "Suspended", joinDate: "Jun 03, 2025" },
-  { id: "O003", name: "Tech Society", email: "tech@kfupm.edu.sa", role: "Organizer", status: "Pending", joinDate: "Nov 22, 2025" },
-  { id: "F001", name: "Dr. Al-Harbi", email: "faculty1@kfupm.edu.sa", role: "Faculty", status: "Active", joinDate: "Jan 15, 2025" },
-];
+import api from "../../lib/apiClient";
 
 export function UserManagement() {
   const { showSuccessPopup } = useNavigation();
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [editUser, setEditUser] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get("/api/users");
+        const list = data || [];
+        const normalized = list.map((u) => ({
+          id: u.userId || u._id,
+          name: u.name,
+          email: u.email,
+          role: u.role === "organizer" ? "Organizer" : u.role === "admin" ? "Admin" : "Student",
+          status: "Active", // no status field in backend; default active
+          joinDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "",
+        }));
+        setUsers(normalized);
+      } catch (err) {
+        showSuccessPopup("Load users", "Failed to load users");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, [showSuccessPopup]);
 
   const validateForm = (form) => {
     if (!form) return {};
@@ -119,8 +136,8 @@ export function UserManagement() {
     setErrors({});
   };
 
-  const roleOptions = ["All", "Student", "Organizer", "Faculty"];
-  const statusOptions = ["All", "Active", "Pending", "Suspended"];
+  const roleOptions = ["All", "Student", "Organizer"];
+  const statusOptions = ["All", "Active"];
 
   const statusBadgeClasses = (status) => {
     if (status === "Active") return "bg-green-100 text-green-800 border-green-200";
@@ -142,19 +159,19 @@ export function UserManagement() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Total Users</p>
-            <p className="text-2xl">2,847</p>
+            <p className="text-2xl">{loading ? "…" : users.length}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Students</p>
-            <p className="text-2xl">2,395</p>
+            <p className="text-2xl">{loading ? "…" : users.filter((u) => u.role === "Student").length}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Organizers</p>
-            <p className="text-2xl">452</p>
+            <p className="text-2xl">{loading ? "…" : users.filter((u) => u.role === "Organizer").length}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Pending Approval</p>
-            <p className="text-2xl text-yellow-600">12</p>
+            <p className="text-2xl text-yellow-600">0</p>
           </div>
         </div>
 
@@ -211,7 +228,9 @@ export function UserManagement() {
               </Button>
             </div>
           </div>
-          <p className="text-sm text-gray-500">Showing {filteredUsers.length} of {users.length} users</p>
+          <p className="text-sm text-gray-500">
+            {loading ? "Loading users..." : `Showing ${filteredUsers.length} of ${users.length} users`}
+          </p>
         </div>
 
         {/* Users Table */}

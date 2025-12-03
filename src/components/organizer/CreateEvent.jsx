@@ -6,6 +6,7 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { useNavigation } from "../../contexts/NavigationContext";
+import api from "../../lib/apiClient";
 
 export function CreateEvent() {
   const {
@@ -74,7 +75,7 @@ export function CreateEvent() {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     localStorage.removeItem(draftKey);
 
@@ -146,55 +147,55 @@ export function CreateEvent() {
       time: formatTimeRange(formData.startDate, formData.endDate),
     };
 
-    if (isEditing) {
-      if (isEditingCustom) {
-        const updatedEvent = {
-          ...activeEvent,
-          ...commonFields,
-          registrations: activeEvent?.registrations || 0,
-          status: activeEvent?.status || "Pending",
-          startDate: formData.startDate || activeEvent.startDate || "",
-          endDate: formData.endDate || activeEvent.endDate || "",
-          date: commonFields.date || activeEvent.date || "Date TBD",
-          time: commonFields.time || activeEvent.time || "Time TBD",
-          isCustom: true,
+    // Build backend payload
+    const payload = {
+      title: formData.title,
+      category: formData.category,
+      capacity: capacityNumber,
+      startAt: formData.startDate,
+      endAt: formData.endDate,
+      venue: commonFields.venue,
+      description: commonFields.description,
+      posterUrl: posterFile?.name || undefined,
+      materials: materials.map((file) => file.name),
+    };
+
+    try {
+      if (isEditing) {
+        const eventId = activeEvent?._id || activeEvent?.id;
+        const { data } = await api.patch(`/api/events/${eventId}`, payload);
+        const updated = {
+          ...data,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          date: commonFields.date,
+          time: commonFields.time,
+          isCustom: false,
         };
-        updateCreatedEvent(activeEvent.id, updatedEvent);
+        updateCreatedEvent(eventId, updated);
         showSuccessPopup("Event updated", "Your event changes were saved.");
       } else {
-        const updatedEvent = {
-          ...activeEvent,
-          ...commonFields,
-          registrations: activeEvent?.registrations || 0,
-          status: "Pending", // require re-approval after edits
+        const { data } = await api.post("/api/events", payload);
+        const created = {
+          ...data,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          date: commonFields.date,
+          time: commonFields.time,
+          isCustom: false,
         };
-        setEventOverride(updatedEvent.title, updatedEvent);
-        showSuccessPopup("Event updated", "Changes saved and sent for re-approval (status set to Pending).");
+        addCreatedEvent(created);
+        showSuccessPopup(
+          "Event submitted for approval",
+          "Your event was sent to the admin team. We'll notify you once it's reviewed."
+        );
       }
       setActiveEvent(null);
-    } else {
-      const newEvent = {
-        id: `custom-${Date.now()}`,
-        title: formData.title || "Untitled Event",
-        category: formData.category || "General",
-        status: "Pending",
-        startDate: formData.startDate || "",
-        endDate: formData.endDate || "",
-        date: commonFields.date,
-        time: commonFields.time,
-        venue: commonFields.venue,
-        description: commonFields.description,
-        registrations: 0,
-        capacity: commonFields.capacity,
-        isCustom: true,
-      };
-      addCreatedEvent(newEvent);
-      showSuccessPopup(
-        "Event submitted for approval",
-        "Your event was sent to the admin team. We'll notify you once it's reviewed."
-      );
+      navigateTo("organizer-dashboard");
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Failed to save event";
+      showErrorPopup("Submit error", msg);
     }
-    navigateTo("organizer-dashboard");
   };
 
   const handleSaveDraft = () => {

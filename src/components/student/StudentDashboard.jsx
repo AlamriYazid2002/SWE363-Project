@@ -1,13 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "../Header";
 import { Search, Calendar, MapPin, Users, Heart, Share2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { useNavigation } from "../../contexts/NavigationContext";
-import { getStudentEvents } from "../../data/studentEvents";
-
-const studentEvents = getStudentEvents();
+import api from "../../lib/apiClient";
 
 export function StudentDashboard() {
   const {
@@ -19,13 +17,64 @@ export function StudentDashboard() {
     toggleFavoriteEvent,
     requestShareHighlight,
   } = useNavigation();
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const favoriteSet = useMemo(() => new Set(favoriteEventIds), [favoriteEventIds]);
 
+  useEffect(() => {
+    const fetchApproved = async () => {
+      setLoading(true);
+      try {
+        // try filtered first
+        let list = [];
+        try {
+          const { data: filtered } = await api.get("/api/events", { params: { status: "approved" } });
+          list = filtered.data || filtered || [];
+        } catch {
+          // fall back to unfiltered fetch if status query not supported
+          const { data: all } = await api.get("/api/events");
+          list = all.data || all || [];
+        }
+
+        const approved = list.filter((ev) => (ev.status || "").toLowerCase() === "approved");
+        const normalized = approved.map((ev) => {
+          const start = ev.startAt ? new Date(ev.startAt) : null;
+          const end = ev.endAt ? new Date(ev.endAt) : null;
+          return {
+            ...ev,
+            id: ev._id,
+            title: ev.title,
+            organizer: ev.organizer || "Organizer",
+            category: ev.category || "General",
+            date: start ? start.toLocaleDateString() : "",
+            time:
+              start && end
+                ? `${start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+                : "",
+            dateValue: ev.startAt,
+            venue: ev.venue || "Venue",
+            capacity: ev.capacity || 0,
+            registered: ev.registered || 0,
+            image: ev.posterUrl || "/dist/assets/KFUPM.png",
+            status: ev.status || "approved",
+          };
+        });
+        setEvents(normalized);
+      } catch (err) {
+        const msg = err?.response?.data?.error || "Failed to load events";
+        showErrorPopup("Load error", msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApproved();
+  }, [showErrorPopup]);
+
   const handleRegister = (event) => {
-    if (event.status && event.status !== "Approved") {
+    if (event.status && event.status.toLowerCase() !== "approved") {
       showErrorPopup(
         "Registration unavailable",
         "This event is pending approval. Registration will open once it's approved."
@@ -68,7 +117,7 @@ export function StudentDashboard() {
       return true;
     };
 
-    return studentEvents.filter((event) => {
+    return events.filter((event) => {
       const eventDate = new Date(event.dateValue);
       const matchesSearch =
         !normalizedQuery ||
@@ -133,12 +182,17 @@ export function StudentDashboard() {
 
         {/* Events Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.length === 0 && (
+          {loading && (
+            <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-200 rounded-lg bg-white">
+              Loading events...
+            </div>
+          )}
+          {!loading && filteredEvents.length === 0 && (
             <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-200 rounded-lg bg-white">
               No events match your filters. Try adjusting your search or filter options.
             </div>
           )}
-          {filteredEvents.map((event) => {
+          {!loading && filteredEvents.map((event) => {
             const isFavorite = favoriteSet.has(event.id);
             return (
             <div

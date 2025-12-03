@@ -6,6 +6,7 @@ const NavigationContext = createContext(undefined);
 
 export function NavigationProvider({ children }) {
   const [currentPage, setCurrentPage] = useState("login");
+  const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [popup, setPopup] = useState({ type: null, title: null, message: null, actionLabel: null });
   const [activeEvent, setActiveEvent] = useState(null);
@@ -19,7 +20,9 @@ export function NavigationProvider({ children }) {
     setCurrentPage(page);
   };
 
-  const login = (role) => {
+  const login = (userData) => {
+    const role = userData?.role;
+    setUser(userData || null);
     setUserRole(role);
     if (role === "admin") {
       setCurrentPage("admin-dashboard");
@@ -31,6 +34,8 @@ export function NavigationProvider({ children }) {
   };
 
   const logout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
     setUserRole(null);
     setActiveEvent(null);
     setEventOverrides({});
@@ -89,6 +94,7 @@ export function NavigationProvider({ children }) {
     <NavigationContext.Provider
       value={{
         currentPage,
+        user,
         userRole,
         popup,
         activeEvent,

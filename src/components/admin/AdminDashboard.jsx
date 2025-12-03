@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Header } from "../Header";
 import { StatCard } from "../StatCard";
 import { Calendar, Users, TrendingUp, Clock, Activity, Filter, Sparkles } from "lucide-react";
@@ -29,29 +29,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useNavigation } from "../../contexts/NavigationContext";
-
-const eventData = [
-  { month: "Jan", events: 24, attendance: 82 },
-  { month: "Feb", events: 19, attendance: 78 },
-  { month: "Mar", events: 31, attendance: 88 },
-  { month: "Apr", events: 27, attendance: 84 },
-  { month: "May", events: 35, attendance: 91 },
-];
-
-const categoryData = [
-  { name: "Academic", value: 32, color: "#0D7B3F" },
-  { name: "Sports", value: 22, color: "#10B981" },
-  { name: "Cultural", value: 18, color: "#34D399" },
-  { name: "Tech", value: 20, color: "#059669" },
-  { name: "Other", value: 8, color: "#6EE7B7" },
-];
-
-const activityFeed = [
-  { id: 1, action: "New event submitted", user: "Ahmed A.", time: "10m ago", status: "pending" },
-  { id: 2, action: "Event approved", user: "Admin", time: "1h ago", status: "approved" },
-  { id: 3, action: "User registered", user: "Sara K.", time: "2h ago", status: "info" },
-  { id: 4, action: "Event completed", user: "IEEE Chapter", time: "Yesterday", status: "completed" },
-];
+import api from "../../lib/apiClient";
 
 export function AdminDashboard() {
   const { navigateTo } = useNavigation();
@@ -60,17 +38,81 @@ export function AdminDashboard() {
   const [activityFilter, setActivityFilter] = useState("all");
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [acknowledgedIds, setAcknowledgedIds] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const chartData = useMemo(() => {
-    if (timeframe === "recent") {
-      return eventData.slice(-3);
-    }
-    return eventData;
-  }, [timeframe]);
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [eventsRes, usersRes] = await Promise.all([
+          api.get("/api/events"),
+          api.get("/api/users").catch(() => ({ data: [] })), // in case non-admin skips
+        ]);
+        const list = eventsRes.data?.data || eventsRes.data || [];
+        setEvents(list);
+        const userList = usersRes.data || [];
+        setUsers(userList);
+      } catch (err) {
+        console.error("Admin dashboard fetch error", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const monthlyChart = useMemo(() => {
+    const map = new Map();
+    const addMonth = (date) => {
+      if (!date) return;
+      const d = new Date(date);
+      if (Number.isNaN(d.getTime())) return;
+      const key = d.toLocaleString("en-US", { month: "short" });
+      map.set(key, (map.get(key) || 0) + 1);
+    };
+    events.forEach((ev) => addMonth(ev.startAt || ev.createdAt));
+    const entries = Array.from(map.entries()).map(([month, events]) => ({ month, events, attendance: 0 }));
+    return entries.slice(-5);
+  }, [events]);
+
+  const categoryData = useMemo(() => {
+    const counts = events.reduce((acc, ev) => {
+      const cat = ev.category || "Other";
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+    }, {});
+    const palette = ["#0D7B3F", "#10B981", "#34D399", "#059669", "#6EE7B7", "#22C55E"];
+    return Object.entries(counts).map(([name, value], idx) => ({
+      name,
+      value,
+      color: palette[idx % palette.length],
+    }));
+  }, [events]);
+
+  const activityFeed = useMemo(() => {
+    return events
+      .slice(0, 10)
+      .map((ev, idx) => ({
+        id: ev._id || idx,
+        action: ev.title || "Event",
+        user: ev.organizer || "Organizer",
+        time: new Date(ev.createdAt || Date.now()).toLocaleString(),
+        status: ev.status || "info",
+      }));
+  }, [events]);
 
   const filteredActivity = useMemo(() => {
     return activityFeed.filter((item) => activityFilter === "all" || item.status === activityFilter);
   }, [activityFilter]);
+
+  const chartData = useMemo(() => {
+    if (timeframe === "recent") {
+      return monthlyChart.slice(-3);
+    }
+    return monthlyChart;
+  }, [timeframe, monthlyChart]);
 
   const showEventsLine = trendFocus === "both" || trendFocus === "events";
   const showAttendanceLine = trendFocus === "both" || trendFocus === "attendance";
@@ -121,15 +163,35 @@ export function AdminDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div onClick={() => navigateTo("admin-dashboard")} className="cursor-pointer">
-            <StatCard title="Total Events" value="156" subtitle="42 this month" icon={Calendar} />
+            <StatCard
+              title="Total Events"
+              value={loading ? "…" : events.length.toString()}
+              subtitle=""
+              icon={Calendar}
+            />
           </div>
           <div onClick={() => navigateTo("admin-pending")} className="cursor-pointer">
-            <StatCard title="Pending Approval" value="8" subtitle="Awaiting review" icon={Clock} />
+            <StatCard
+              title="Pending Approval"
+              value={loading ? "…" : events.filter((e) => (e.status || "").toLowerCase() === "pending").length.toString()}
+              subtitle="Awaiting review"
+              icon={Clock}
+            />
           </div>
           <div onClick={() => navigateTo("admin-users")} className="cursor-pointer">
-            <StatCard title="Total Users" value="2,847" subtitle="452 organizers" icon={Users} />
+            <StatCard
+              title="Total Users"
+              value={loading ? "…" : users.length.toString()}
+              subtitle={`${users.filter((u) => u.role === "organizer").length} organizers`}
+              icon={Users}
+            />
           </div>
-          <StatCard title="Avg Attendance" value="87%" subtitle="+5% from last month" icon={TrendingUp} />
+          <StatCard
+            title="Avg Attendance"
+            value="—"
+            subtitle="Not tracked"
+            icon={TrendingUp}
+          />
         </div>
 
         {/* Controls */}

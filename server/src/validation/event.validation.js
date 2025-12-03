@@ -2,12 +2,14 @@ import Joi from "joi";
 
 export const createEventSchema = Joi.object({
   title: Joi.string().required(),
-  category: Joi.string().optional(),
+  category: Joi.string().required(),
   capacity: Joi.number().min(1).required(),
   startAt: Joi.date().required(),
   endAt: Joi.date().required(),
   venue: Joi.string().required(),
-  description: Joi.string().optional()
+  description: Joi.string().optional(),
+  posterUrl: Joi.string().optional(),
+  materials: Joi.array().items(Joi.string()).optional()
 });
 
 export const updateEventSchema = Joi.object({
@@ -18,5 +20,7 @@ export const updateEventSchema = Joi.object({
   endAt: Joi.date().optional(),
   venue: Joi.string().optional(),
   description: Joi.string().optional(),
-  status: Joi.string().valid("pending", "published", "closed").optional()
+  posterUrl: Joi.string().optional(),
+  materials: Joi.array().items(Joi.string()).optional(),
+  status: Joi.string().valid("pending", "approved", "rejected").optional()
 });
