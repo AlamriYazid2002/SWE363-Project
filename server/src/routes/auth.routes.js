@@ -1,34 +1,13 @@
 import express from "express";
-import { body, validationResult } from "express-validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { User } from "../models/User.js";
+import User from "../models/User.js";
+import { validate } from "../middleware/validate.js";
+import { registerSchema, loginSchema } from "../validation/auth.validation.js";
 
 const router = express.Router();
 
-const validateRegister = [
-  body("name").trim().notEmpty().withMessage("Name is required"),
-  body("email").isEmail().withMessage("Valid email is required").normalizeEmail(),
-  body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
-];
-
-const validateLogin = [
-  body("email").isEmail().withMessage("Valid email is required").normalizeEmail(),
-  body("password").notEmpty().withMessage("Password is required"),
-];
-
-const handleValidation = (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  return null;
-};
-
-router.post("/register", validateRegister, async (req, res, next) => {
-  const errorResponse = handleValidation(req, res);
-  if (errorResponse) return errorResponse;
-
+router.post("/register", validate(registerSchema), async (req, res, next) => {
   const { name, email, password, role } = req.body;
 
   try {
@@ -49,10 +28,7 @@ router.post("/register", validateRegister, async (req, res, next) => {
   }
 });
 
-router.post("/login", validateLogin, async (req, res, next) => {
-  const errorResponse = handleValidation(req, res);
-  if (errorResponse) return errorResponse;
-
+router.post("/login", validate(loginSchema), async (req, res, next) => {
   const { email, password } = req.body;
 
   try {

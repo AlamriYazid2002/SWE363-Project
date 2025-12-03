@@ -1,26 +1,23 @@
 import jwt from "jsonwebtoken";
 
-export function auth(allowedRoles = []) {
+export default function auth(roles = []) {
   return (req, res, next) => {
-    const header = req.headers.authorization;
-    if (!header || !header.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const token = header.split(" ")[1];
-
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      const { id, role } = payload || {};
-      req.user = { id, role };
+      const header = req.headers.authorization;
+      if (!header) return res.status(401).json({ error: "Missing token" });
 
-      if (allowedRoles.length && !allowedRoles.includes(role)) {
+      const token = header.split(" ")[1];
+      const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+      req.user = { id: payload.id, role: payload.role };
+
+      if (roles.length && !roles.includes(payload.role)) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
-      return next();
+      next();
     } catch (err) {
-      return res.status(401).json({ error: "Invalid token" });
+      res.status(401).json({ error: "Invalid or expired token" });
     }
   };
 }
