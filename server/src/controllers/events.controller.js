@@ -14,8 +14,32 @@ export const createEvent = async (req, res, next) => {
 
 export const getEvents = async (req, res, next) => {
   try {
-    const events = await Event.find();
-    res.json(events);
+    const { category, search, status, page = 1, limit = 10 } = req.query;
+
+    const query = {};
+
+    if (category) query.category = category;
+    if (status) query.status = status;
+
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const events = await Event.find(query)
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await Event.countDocuments(query);
+
+    res.json({
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      data: events
+    });
   } catch (err) {
     next(err);
   }

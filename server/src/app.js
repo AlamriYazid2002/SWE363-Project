@@ -8,6 +8,8 @@ import eventRoutes from "./routes/events.routes.js";
 import userRoutes from "./routes/users.routes.js";
 
 import auth from "./middleware/auth.js";
+import notFound from "./middleware/notFound.js";
+import error from "./middleware/error.js";
 
 dotenv.config();
 const app = express();
@@ -29,10 +31,9 @@ app.get("/api/health", (_req, res) =>
   res.json({ ok: true, time: new Date().toISOString() })
 );
 
-// Error handler
-app.use((err, _req, res, _next) =>
-  res.status(err.status || 500).json({ error: err.message || "Server error" })
-);
+// 404 then centralized error
+app.use(notFound);
+app.use(error);
 
 const port = process.env.PORT || 5000;
 connectDB().then(() => app.listen(port, () => console.log(`🚀 :${port}`)));
