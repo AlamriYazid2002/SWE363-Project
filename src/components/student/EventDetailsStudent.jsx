@@ -15,9 +15,6 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
 import { useNavigation } from "../../contexts/NavigationContext";
-import { getStudentEvents } from "../../data/studentEvents";
-
-const defaultEvent = getStudentEvents()[0];
 const SHARE_FLASH_STYLE_ID = "share-flash-style";
 
 const sanitizeDash = (value = "") => value.replace(/[-–—]/g, "-");
@@ -48,7 +45,7 @@ export function EventDetailsStudent() {
     shouldHighlightShare,
     clearShareHighlight,
   } = useNavigation();
-  const event = useMemo(() => activeEvent || defaultEvent, [activeEvent]);
+  const event = useMemo(() => activeEvent, [activeEvent]);
   const isFavorite = favoriteEventIds.includes(event.id);
   const capacity = Math.max(1, event.capacity || 1);
   const registrationPercent = Math.min(
@@ -66,7 +63,7 @@ export function EventDetailsStudent() {
   }, []);
 
   useEffect(() => {
-    if (!activeEvent) setActiveEvent(defaultEvent);
+    if (!activeEvent) return;
     if (typeof document !== "undefined" && !document.getElementById(SHARE_FLASH_STYLE_ID)) {
       const style = document.createElement("style");
       style.id = SHARE_FLASH_STYLE_ID;
@@ -104,8 +101,25 @@ export function EventDetailsStudent() {
     }
   }, [shouldHighlightShare, clearShareHighlight]);
 
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header userRole="student" />
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <Button variant="ghost" className="mb-4 gap-2" onClick={() => navigateTo("student-dashboard")}>
+            <ArrowLeft size={18} />
+            Back to Events
+          </Button>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm text-gray-600">
+            No event selected.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const eventTitle = event.title;
-  const eventOrganizer = event.organizer;
+  const eventOrganizer = event.organizer || "Organizer";
   const eventUrl =
     typeof window !== "undefined"
       ? window.location.href
@@ -238,7 +252,7 @@ export function EventDetailsStudent() {
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-6">
           <div className="relative h-80 bg-gray-200">
             <img 
-              src="https://images.unsplash.com/photo-1591453089816-0fbb971b454c?w=1200&h=600&fit=crop" 
+              src={event.image || event.posterUrl || "https://images.unsplash.com/photo-1591453089816-0fbb971b454c?w=1200&h=600&fit=crop"} 
               alt="Event" 
               className="w-full h-full object-cover"
             />

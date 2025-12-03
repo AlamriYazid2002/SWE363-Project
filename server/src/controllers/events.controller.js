@@ -61,7 +61,7 @@ export const updateEvent = async (req, res, next) => {
     if (!event) return res.status(404).json({ error: "Not found" });
 
     // Ownership check
-    if (event.organizerId.toString() !== req.user.id && req.user.role !== "admin") {
+    if (event.organizerId?.toString() !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ error: "Forbidden" });
     }
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "../Header";
 import { Search, Calendar, MapPin, Users, CheckCircle, XCircle, Clock3 } from "lucide-react";
 import { Button } from "../ui/button";
@@ -14,62 +14,44 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { useNavigation } from "../../contexts/NavigationContext";
-
-const initialPendingEvents = [
-  {
-    id: 1,
-    title: "AI & Data Science Workshop",
-    organizer: "IEEE Student Chapter",
-    category: "Academic",
-    date: "Dec 10, 2025",
-    time: "3:00 PM - 5:00 PM",
-    venue: "Building 59, Room 301",
-    capacity: 120,
-    description:
-      "A hands-on workshop covering modern data pipelines, model evaluation, and deployment tips for beginners.",
-    submittedDate: "Dec 02, 2025",
-    status: "pending",
-  },
-  {
-    id: 2,
-    title: "Intercollegiate Football Tryouts",
-    organizer: "Athletics Department",
-    category: "Sports",
-    date: "Dec 12, 2025",
-    time: "6:00 PM - 8:00 PM",
-    venue: "Main Stadium",
-    capacity: 80,
-    description:
-      "Open tryouts for the spring football team. Bring appropriate gear and arrive 15 minutes early for registration.",
-    submittedDate: "Dec 03, 2025",
-    status: "pending",
-  },
-  {
-    id: 3,
-    title: "Hack the Future: Mini-Hackathon",
-    organizer: "Computer Society",
-    category: "Tech",
-    date: "Dec 14, 2025",
-    time: "9:00 AM - 9:00 PM",
-    venue: "Innovation Lab",
-    capacity: 60,
-    description:
-      "A one-day hackathon focusing on campus-life solutions. Teams of up to 4 students, prizes for top 3 projects.",
-    submittedDate: "Dec 05, 2025",
-    status: "pending",
-  },
-];
+import api from "../../lib/apiClient";
 
 const categoryOptions = ["all", "Academic", "Sports", "Tech"];
 
 export function PendingEvents() {
   const { showSuccessPopup, showErrorPopup } = useNavigation();
-  const [events, setEvents] = useState(initialPendingEvents);
+  const [events, setEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [lastAction, setLastAction] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get("/api/events", { params: { status: statusFilter === "all" ? undefined : statusFilter } });
+        // normalize fields for display
+        const normalized = (data.data || data || []).map((ev) => ({
+          ...ev,
+          id: ev._id,
+          organizer: ev.organizer || ev.organizerName || "Organizer",
+          submittedDate: new Date(ev.createdAt).toLocaleDateString(),
+          date: new Date(ev.startAt).toLocaleDateString(),
+          time: `${new Date(ev.startAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - ${new Date(ev.endAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+        }));
+        setEvents(normalized);
+      } catch (err) {
+        const msg = err?.response?.data?.error || "Failed to load events";
+        showErrorPopup("Load error", msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, [statusFilter, showErrorPopup]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
@@ -88,16 +70,28 @@ export function PendingEvents() {
     );
   };
 
-  const handleApprove = (eventObj) => {
-    updateEventStatus(eventObj.id, "approved");
-    setLastAction({ type: "approved", title: eventObj.title });
-    showSuccessPopup("Event Approved", `"${eventObj.title}" is now visible to students.`);
+  const handleApprove = async (eventObj) => {
+    try {
+      await api.patch(`/api/events/${eventObj.id}`, { status: "approved" });
+      updateEventStatus(eventObj.id, "approved");
+      setLastAction({ type: "approved", title: eventObj.title });
+      showSuccessPopup("Event Approved", `"${eventObj.title}" is now visible to students.`);
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Failed to approve event";
+      showErrorPopup("Approve error", msg);
+    }
   };
 
-  const handleReject = (eventObj) => {
-    updateEventStatus(eventObj.id, "rejected");
-    setLastAction({ type: "rejected", title: eventObj.title });
-    showErrorPopup("Event Rejected", `"${eventObj.title}" has been rejected.`);
+  const handleReject = async (eventObj) => {
+    try {
+      await api.patch(`/api/events/${eventObj.id}`, { status: "rejected" });
+      updateEventStatus(eventObj.id, "rejected");
+      setLastAction({ type: "rejected", title: eventObj.title });
+      showErrorPopup("Event Rejected", `"${eventObj.title}" has been rejected.`);
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Failed to reject event";
+      showErrorPopup("Reject error", msg);
+    }
   };
 
   const renderStatusBadge = (status) => {
@@ -171,7 +165,12 @@ export function PendingEvents() {
 
         {/* Pending Events List */}
         <div className="space-y-4">
-          {filteredEvents.map((event) => (
+          {loading && (
+            <div className="bg-white border border-gray-200 rounded-lg p-6 text-gray-600 text-center">
+              Loading events...
+            </div>
+          )}
+          {!loading && filteredEvents.map((event) => (
             <div key={event.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
               <div className="flex items-start justify-between mb-4">
                 <div>

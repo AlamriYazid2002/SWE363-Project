@@ -1,59 +1,54 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "../Header";
 import { StatCard } from "../StatCard";
 import { Calendar, Users } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useNavigation } from "../../contexts/NavigationContext";
+import api from "../../lib/apiClient";
 
 export function OrganizerDashboard() {
-  const { navigateTo, setActiveEvent, eventOverrides, createdEvents, removeCreatedEvent, showSuccessPopup } = useNavigation();
-
-  const seedEvents = [
-    {
-      title: "AI & Machine Learning Workshop",
-      status: "Approved",
-      date: "May 15, 2025",
-      registrations: 45,
-      capacity: 100,
-      category: "Technology",
-      venue: "Building 5, Room 301",
-      time: "2:00 PM - 5:00 PM",
-      description: "Hands-on intro to AI/ML.",
-      startDate: "",
-      endDate: "",
-    },
-    {
-      title: "Cybersecurity Seminar",
-      status: "Pending",
-      date: "May 22, 2025",
-      registrations: 30,
-      capacity: 80,
-      category: "Technology",
-      venue: "Main Auditorium",
-      time: "6:00 PM - 8:00 PM",
-      description: "Best practices for secure systems.",
-      startDate: "",
-      endDate: "",
-    },
-    {
-      title: "Tech Career Fair 2025",
-      status: "Approved",
-      date: "Jun 02, 2025",
-      registrations: 178,
-      capacity: 300,
-      category: "Career",
-      venue: "Exhibition Hall",
-      time: "10:00 AM - 4:00 PM",
-      description: "Meet employers and network.",
-      startDate: "",
-      endDate: "",
-    },
-  ];
+  const { navigateTo, setActiveEvent, eventOverrides, createdEvents, removeCreatedEvent, showSuccessPopup, showErrorPopup, user } = useNavigation();
+  const [events, setEvents] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
+
+  useEffect(() => {
+    const fetchMyEvents = async () => {
+      try {
+        const { data } = await api.get("/api/events");
+        const list = data.data || data || [];
+        const mine = user?.role === "organizer"
+          ? list.filter((ev) => ev.organizerId === user.id || ev.organizerId === user._id)
+          : list;
+        const normalized = mine.map((ev) => {
+          const start = ev.startAt ? new Date(ev.startAt) : null;
+          const end = ev.endAt ? new Date(ev.endAt) : null;
+          const dateStr = start ? start.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" }) : "Date TBD";
+          const timeStr = start && end
+            ? `${start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+            : "Time TBD";
+          return {
+            ...ev,
+            id: ev._id,
+            date: dateStr,
+            time: timeStr,
+            status: ev.status ? ev.status[0].toUpperCase() + ev.status.slice(1) : "Pending",
+            registrations: ev.registrations || 0,
+            capacity: ev.capacity || 0,
+            category: ev.category || "General",
+          };
+        });
+        setEvents(normalized);
+      } catch (err) {
+        const msg = err?.response?.data?.error || "Failed to load events";
+        showErrorPopup("Load error", msg);
+      }
+    };
+    fetchMyEvents();
+  }, [user, showErrorPopup]);
 
   const formatDisplayDate = (value) => {
     if (!value) return "Date TBD";
@@ -66,13 +61,13 @@ export function OrganizerDashboard() {
     evt.isCustom || !eventOverrides[evt.title] ? evt : { ...evt, ...eventOverrides[evt.title] };
 
   const combinedEvents = useMemo(() => {
-    const seeded = seedEvents.map((evt) => mergeWithOverrides(evt));
     const formattedCustom = createdEvents.map((evt) => ({
       ...evt,
       date: formatDisplayDate(evt.startDate || evt.date),
     }));
-    return [...formattedCustom, ...seeded];
-  }, [seedEvents, createdEvents, eventOverrides]);
+    const merged = events.map((evt) => mergeWithOverrides(evt));
+    return [...formattedCustom, ...merged];
+  }, [events, createdEvents, eventOverrides]);
 
   const totalEvents = combinedEvents.length;
   const pendingCount = combinedEvents.filter((e) => e.status === "Pending").length;
