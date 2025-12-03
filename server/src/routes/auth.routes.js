@@ -25,11 +25,11 @@ const handleValidation = (req, res) => {
   return null;
 };
 
-router.post("/register", validateRegister, async (req, res) => {
+router.post("/register", validateRegister, async (req, res, next) => {
   const errorResponse = handleValidation(req, res);
   if (errorResponse) return errorResponse;
 
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
 
   try {
     const existing = await User.findOne({ email });
@@ -37,18 +37,19 @@ router.post("/register", validateRegister, async (req, res) => {
       return res.status(400).json({ error: "Email already registered" });
     }
 
-    const user = new User({ name, email, password });
+    const user = new User({ name, email, password, role });
     await user.save();
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     return res.status(201).json({ id: user.id, role: user.role, token });
   } catch (err) {
-    return res.status(500).json({ error: "Registration failed" });
+    console.error(err);
+    return next(err);
   }
 });
 
-router.post("/login", validateLogin, async (req, res) => {
+router.post("/login", validateLogin, async (req, res, next) => {
   const errorResponse = handleValidation(req, res);
   if (errorResponse) return errorResponse;
 
@@ -69,7 +70,8 @@ router.post("/login", validateLogin, async (req, res) => {
 
     return res.json({ id: user.id, role: user.role, token });
   } catch (err) {
-    return res.status(500).json({ error: "Login failed" });
+    console.error(err);
+    return next(err);
   }
 });
 
