@@ -19,17 +19,15 @@ userSchema.pre("save", async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-userSchema.pre("save", function (next) {
-  if (!this.userId) {
-    if (this.kfupmId) {
-      this.userId = this.kfupmId;
-      return next();
-    }
-    const prefix = (this.email || "user").split("@")[0].replace(/[^a-zA-Z0-9]/g, "").slice(0, 5).toLowerCase();
-    const suffix = this._id.toString().slice(-4);
-    this.userId = `${prefix || "user"}-${suffix}`;
+userSchema.pre("save", function () {
+  if (this.userId) return;
+  if (this.kfupmId) {
+    this.userId = this.kfupmId;
+    return;
   }
-  next();
+  const prefix = (this.email || "user").split("@")[0].replace(/[^a-zA-Z0-9]/g, "").slice(0, 5).toLowerCase();
+  const suffix = this._id.toString().slice(-4);
+  this.userId = `${prefix || "user"}-${suffix}`;
 });
 
 export default mongoose.model("User", userSchema);

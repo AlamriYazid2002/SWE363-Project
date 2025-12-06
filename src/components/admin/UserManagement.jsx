@@ -48,7 +48,7 @@ export function UserManagement() {
         const { data } = await api.get("/api/users");
         const list = data || [];
         const normalized = list.map((u) => ({
-          id: u.userId || u._id,
+          id: u.kfupmId || u.userId || u._id,
           name: u.name,
           email: u.email,
           role: u.role === "organizer" ? "Organizer" : u.role === "admin" ? "Admin" : "Student",

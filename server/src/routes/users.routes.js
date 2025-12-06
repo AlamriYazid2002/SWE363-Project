@@ -10,7 +10,7 @@ router.get("/me", auth(), (req, res) => {
 
 router.get("/", auth(["admin"]), async (_req, res, next) => {
   try {
-    const users = await User.find({}, "name email role");
+    const users = await User.find({}, "name email role kfupmId userId createdAt");
     return res.json(users);
   } catch (err) {
     console.error(err);
