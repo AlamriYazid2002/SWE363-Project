@@ -33,6 +33,7 @@ export function SignUp() {
 
     const missing = [
       { key: "fullname", label: "Full Name" },
+      { key: "kfupmId", label: "KFUPM ID" },
       { key: "email", label: "Email" },
       { key: "role", label: "Account Type" },
       { key: "password", label: "Password" },
